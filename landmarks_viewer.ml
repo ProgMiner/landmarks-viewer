@@ -187,17 +187,26 @@ module Graph = struct
     in
     let text x = Document.create_text_node document x in
     let profile_with_sys_time =
-      if has_sys_time graph then
-        [text "Time", (fun x y -> compare x.sys_time y.sys_time),
-         fun {sys_time; _} -> text (Printf.sprintf "%.0f" sys_time |> Helper.format_number)]
+      let avg_sys_time x = x.sys_time /. float_of_int x.calls in
+      if has_sys_time graph then [
+        (text "Time", (fun x y -> compare x.sys_time y.sys_time),
+         fun {sys_time; _} -> text (Printf.sprintf "%.0f" sys_time |> Helper.format_number));
+        (text "Time / Call", (fun x y -> compare (avg_sys_time x) (avg_sys_time y)),
+         fun x -> text (if x.calls = 0 then "" else Printf.sprintf "%.0f" (avg_sys_time x) |> Helper.format_number));
+      ]
       else []
     in
     let profile_with_allocated_bytes =
-      if has_allocated_bytes graph then
-        [text "Allocated Bytes", (fun x y -> compare x.allocated_bytes y.allocated_bytes),
-         fun {allocated_bytes; _} -> text (Printf.sprintf "%d" allocated_bytes |> Helper.format_number)]
+      let avg_allocated_bytes x = float_of_int x.allocated_bytes /. float_of_int x.calls in
+      if has_allocated_bytes graph then [
+        (text "Allocated Bytes", (fun x y -> compare x.allocated_bytes y.allocated_bytes),
+         fun {allocated_bytes; _} -> text (Printf.sprintf "%d" allocated_bytes |> Helper.format_number));
+        (text "Allocated Bytes / Call", (fun x y -> compare (avg_allocated_bytes x) (avg_allocated_bytes y)),
+         fun x -> text (if x.calls = 0 then "" else Printf.sprintf "%.0f" (avg_allocated_bytes x) |> Helper.format_number));
+      ]
       else []
     in
+    let avg_time x = x.time /. float_of_int x.calls in
     let cols = [
       (text "Name", (fun x y -> compare x.name y.name),
        fun {name; _} -> text name);
@@ -207,6 +216,8 @@ module Graph = struct
        fun {calls; _} -> text (string_of_int calls |> Helper.format_number));
       (text "Cycles", (fun x y -> compare x.time y.time),
        fun {time; _} -> text (Printf.sprintf "%.0f" time |> Helper.format_number));
+      (text "Cycles / Call", (fun x y -> compare (avg_time x) (avg_time y)),
+       fun x -> text (if x.calls = 0 then "" else Printf.sprintf "%.0f" (avg_time x) |> Helper.format_number));
     ] @ profile_with_sys_time @ profile_with_allocated_bytes
     in
     Helper.sortable_table cols all_nodes
