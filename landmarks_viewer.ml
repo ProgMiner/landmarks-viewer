@@ -160,7 +160,8 @@ module Graph = struct
     time: float;
     children: id list;
     sys_time: float;
-    allocated_bytes: float;
+    allocated_bytes: int;
+    allocated_bytes_major: int;
     distrib: floatarray;
   } [@@js] [@@js.verbatim_names]
 
@@ -175,7 +176,7 @@ module Graph = struct
     Array.exists (fun {sys_time; _} -> sys_time <> 0.0) nodes
 
   let has_allocated_bytes {nodes; _} =
-    Array.exists (fun {allocated_bytes; _} -> allocated_bytes <> 0.0) nodes
+    Array.exists (fun {allocated_bytes; _} -> allocated_bytes <> 0) nodes
 
   let aggregated_table graph =
     let graph = Landmark.Graph.aggregate_landmarks graph in
@@ -194,7 +195,7 @@ module Graph = struct
     let profile_with_allocated_bytes =
       if has_allocated_bytes graph then
         [text "Allocated Bytes", (fun x y -> compare x.allocated_bytes y.allocated_bytes),
-         fun {allocated_bytes; _} -> text (Printf.sprintf "%.0f" allocated_bytes |> Helper.format_number)]
+         fun {allocated_bytes; _} -> text (Printf.sprintf "%d" allocated_bytes |> Helper.format_number)]
       else []
     in
     let cols = [
@@ -297,7 +298,7 @@ module TreeView = struct
               ( ["Name", name; "Cycles", Printf.sprintf "%.0f" node_time |> Helper.format_number; "Calls", Printf.sprintf "%d" calls |> Helper.format_number ]
                 @ (if location <> "" then ["Location", location] else [])
                 @ (if sys_time <> 0.0 then ["Time", Printf.sprintf "%.0f" sys_time |> Helper.format_number ] else [])
-                @ (if allocated_bytes <> 0.0 then ["Allocated bytes", Printf.sprintf "%.0f" allocated_bytes |> Helper.format_number ] else []))
+                @ (if allocated_bytes <> 0 then ["Allocated bytes", Printf.sprintf "%d" allocated_bytes |> Helper.format_number ] else []))
           in
           let div = create "div" ~class_name:"fixed" in
           Node.append_child div table;
@@ -382,7 +383,7 @@ let filename_onclick _ =
             has_sys_time graph, "Source Tree Time",
             fill_graph (fun {sys_time; _} -> sys_time);
             has_allocated_bytes graph, "Source Tree Allocation",
-            fill_graph (fun {allocated_bytes; _} -> allocated_bytes);
+            fill_graph (fun {allocated_bytes; _} -> float_of_int allocated_bytes);
             true, "Aggregated Table", Graph.aggregated_table graph ])
         in
         Helper.tabs_logic l
